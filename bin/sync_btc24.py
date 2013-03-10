@@ -5,11 +5,15 @@ import datetime
 import json
 import logging
 import urllib, urllib2
+import time
+
 import pymongo
+
+DB = 'test'
 
 def get_max_tradeid():
     connection = pymongo.MongoClient()
-    db = connection.test
+    db = connection[DB]
     rec = list(db.btc24.find().sort('_id',-1).limit(1))
     if rec:
         id = rec[0]['_id']
@@ -36,7 +40,7 @@ def fetch_btc_trades(sinceid):
 
 def normalize_trade(trade):
     return {'_id': int(trade['tid']),
-            'time': datetime.datetime.fromtimestamp(int(trade['date'])),
+            'time': datetime.datetime.utcfromtimestamp(int(trade['date'])),
             'price': float(trade['price']),
             'amount': float(trade['amount'])
            }
@@ -46,7 +50,7 @@ def add_trades(trades):
         return
 
     connection = pymongo.MongoClient()
-    db = connection.test
+    db = connection[DB]
     db.btc24.insert(trades)
     logging.debug('add %s trades' % len(trades))
 
@@ -62,4 +66,7 @@ if __name__ == '__main__':
                         format=logformat)
     logger = logging.getLogger( __name__ )
 
-    sync_btc24()
+    while True:
+        sync_btc24()
+        # update every 10 minutes
+        time.sleep(600)
